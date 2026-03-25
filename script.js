@@ -16,6 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const bulkDeleteBtn = document.getElementById('bulk-delete');
     const sectionTitle = document.getElementById('current-section-title');
 
+    // Performance & Sync State
+    let isEditing = false;
+    let localUpdateTimer;
+    let pendingCloudData = null;
+
     // State
     let currentSection = 'data-entry';
     let appData = { 'data-entry': [], 'buy-entry': [], 'giving-data': [], 'kharch': [], 'upad': [] };
@@ -83,14 +88,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 authContainer.classList.add('hidden');
                 dashboardContainer.classList.remove('hidden');
                 userDisplayName.textContent = user.email.split('@')[0];
+                console.log("Firebase Auth Active:", user.email);
                 
-                // Real-time Database Sync
+                // Real-time Database Sync (Buffered & Robust)
                 db.ref('appData').on('value', (snapshot) => {
                     const data = snapshot.val();
-                    if (data) {
-                        appData = { ...appData, ...data };
-                        checkDueSignals();
-                        renderTable();
+                    console.log("Firebase Data Received:", data);
+                    
+                    // IF FIREBASE IS EMPTY: Try to migrate from LocalStorage
+                    if (!data) {
+                        const saved = localStorage.getItem('pis_admin_db_v2');
+                        if (saved) {
+                            const parsed = JSON.parse(saved);
+                            appData = parsed;
+                            db.ref('appData').set(appData);
+                            showToast('Old data migrated to Cloud!', 'info');
+                        }
+                    } else {
+                        if (isEditing) {
+                            pendingCloudData = data;
+                        } else {
+                            appData = { ...appData, ...data };
+                            checkDueSignals();
+                            renderTable();
+                        }
                     }
                 });
             } else {
@@ -624,9 +645,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Global Operations (Exposed for inline handlers) ---
     window.updateData = (section, rowIdx, colIdx, value) => {
+        isEditing = true;
         appData[section][rowIdx][colIdx] = value;
         checkDueSignals();
-        debounce(saveToStorage, 1000)();
+        
+        // Reset editing state and apply pending data after inactivity
+        clearTimeout(localUpdateTimer);
+        localUpdateTimer = setTimeout(() => { 
+            isEditing = false; 
+            if (pendingCloudData) {
+                appData = { ...appData, ...pendingCloudData };
+                pendingCloudData = null;
+                renderTable();
+            }
+        }, 1500);
+
+        debounce(() => saveToFirebase(section), 1000)();
     };
 
     window.deleteRow = (section, rowIdx) => {
@@ -635,10 +669,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Row deleted', 'info');
     };
 
-    function saveAndRender() {
-        saveToFirebase();
+    function saveAndRender(section = currentSection) {
         checkDueSignals();
         renderTable();
+        debounce(() => saveToFirebase(section), 1000)();
     }
 
     function checkDueSignals() {
@@ -660,9 +694,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function saveToFirebase() {
+    function saveToFirebase(section) {
         if (auth.currentUser) {
-            db.ref('appData').set(appData);
+            // Granular update: Only push the changed section
+            if (section) {
+                db.ref(`appData/${section}`).set(appData[section]);
+            } else {
+                db.ref('appData').set(appData);
+            }
         } else {
             localStorage.setItem('pis_admin_db_v2', JSON.stringify(appData));
         }
