@@ -41,6 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
         'data-entry': 'Home', 'buy-entry': 'Buy Entry', 'giving-data': 'Sell Entry', 'kharch': 'Kharch', 'upad': 'Upad'
     };
 
+    const GLOBAL_ID = "maniyadhruvik07@gmail.com";
+    const GLOBAL_PASS = "maniya@#07";
+
     // --- Core Logic ---
 
     function initialize() {
@@ -67,44 +70,32 @@ document.addEventListener('DOMContentLoaded', () => {
         jumpBtn.onclick = executeJump;
         jumpInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') executeJump(); });
 
-        // --- Firebase Setup ---
-    const firebaseConfig = {
-        apiKey: "AIzaSyDontIQzCFDKlj4p1X_2iihQ3ujEz4Dt1U",
-        authDomain: "dm1234-2e39c.firebaseapp.com",
-        databaseURL: "https://dm1234-2e39c-default-rtdb.firebaseio.com",
-        projectId: "dm1234-2e39c",
-        storageBucket: "dm1234-2e39c.firebasestorage.app",
-        messagingSenderId: "626743630865",
-        appId: "1:626743630865:web:2b088603358afd6c41a5b0"
-    };
+        // Firebase Setup (for Data Only)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDontIQzCFDKlj4p1X_2iihQ3ujEz4Dt1U",
+            authDomain: "dm1234-2e39c.firebaseapp.com",
+            databaseURL: "https://dm1234-2e39c-default-rtdb.firebaseio.com",
+            projectId: "dm1234-2e39c",
+            storageBucket: "dm1234-2e39c.firebasestorage.app",
+            messagingSenderId: "626743630865",
+            appId: "1:626743630865:web:2b088603358afd6c41a5b0"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-
-    // Firebase Auth State Tracker
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                authContainer.classList.add('hidden');
-                dashboardContainer.classList.remove('hidden');
-                userDisplayName.textContent = user.email.split('@')[0];
-                console.log("Firebase Auth Active:", user.email);
-                
-                // Real-time Database Sync (Buffered & Robust)
+        // Check Login State
+        const currentUser = localStorage.getItem('datapro_active_user');
+        if (currentUser) {
+            authContainer.classList.add('hidden');
+            dashboardContainer.classList.remove('hidden');
+            userDisplayName.textContent = currentUser.split('@')[0];
+            
+            // Firebase Anonymous Auth for cloud syncing
+            firebase.auth().signInAnonymously().then(() => {
+                // Real-time Database Sync (Always active)
                 db.ref('appData').on('value', (snapshot) => {
                     const data = snapshot.val();
-                    console.log("Firebase Data Received:", data);
-                    
-                    // IF FIREBASE IS EMPTY: Try to migrate from LocalStorage
-                    if (!data) {
-                        const saved = localStorage.getItem('pis_admin_db_v2');
-                        if (saved) {
-                            const parsed = JSON.parse(saved);
-                            appData = parsed;
-                            db.ref('appData').set(appData);
-                            showToast('Old data migrated to Cloud!', 'info');
-                        }
-                    } else {
+                    if (data) {
                         if (isEditing) {
                             pendingCloudData = data;
                         } else {
@@ -114,28 +105,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }
                 });
+            }).catch(err => {
+                console.error("Firebase Anonymous Login Failed:", err);
+                showToast("Cloud connection failed. Check your Firebase settings.", "error");
+            });
+        }
+
+        signinForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('signin-email').value;
+            const password = document.getElementById('signin-password').value;
+
+            if (email === GLOBAL_ID && password === GLOBAL_PASS) {
+                localStorage.setItem('datapro_active_user', email);
+                location.reload();
             } else {
-                authContainer.classList.remove('hidden');
-                dashboardContainer.classList.add('hidden');
+                showToast("Invalid ID or Password. Contact Admin.", "error");
             }
         });
 
         logoutBtn.addEventListener('click', () => {
-            auth.signOut();
+            localStorage.removeItem('datapro_active_user');
+            location.reload();
         });
 
-        signinForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('signin-email').value;
-            const password = document.getElementById('signin-password').value;
-            
-            try {
-                await auth.signInWithEmailAndPassword(email, password);
-                showToast('Login Successful!', 'success');
-            } catch (err) {
-                showToast(err.message, 'error');
-            }
-        });
 
         // Navigation setup
         navItems.forEach((nav, idx) => {
@@ -178,36 +171,61 @@ document.addEventListener('DOMContentLoaded', () => {
     // Controls
     addRowBtnTrigger.addEventListener('click', () => {
         if (currentSection.includes('report')) return;
-        appData[currentSection].push(tableConfigs[currentSection].map(() => ''));
+        const newRow = tableConfigs[currentSection].map(type => (type === 'number' ? 0 : ''));
+        appData[currentSection].push(newRow);
         currentPage[currentSection] = Math.max(0, Math.ceil(appData[currentSection].length / PAGE_SIZE) - 1);
-        saveAndRender();
+        
+        // Push section structure
+        if (localStorage.getItem('datapro_active_user')) {
+             firebase.database().ref(`appData/${currentSection}`).set(appData[currentSection]);
+        }
+        
+        renderTable();
         showToast('New row added', 'info');
     });
 
     add50Btn.addEventListener('click', () => {
         if (currentSection.includes('report')) return;
         for (let i = 0; i < 50; i++) {
-            appData[currentSection].push(tableConfigs[currentSection].map(() => ''));
+            appData[currentSection].push(tableConfigs[currentSection].map(type => (type === 'number' ? 0 : '')));
         }
         currentPage[currentSection] = Math.max(0, Math.ceil(appData[currentSection].length / PAGE_SIZE) - 1);
-        saveAndRender();
+        
+        // Push full section after bulk add
+        if (localStorage.getItem('datapro_active_user')) {
+             firebase.database().ref(`appData/${currentSection}`).set(appData[currentSection]);
+        }
+        
+        renderTable();
         showToast('Added 50 rows', 'success');
     });
 
     clearAllBtn.addEventListener('click', () => {
         if (currentSection.includes('report')) return;
         if (confirm('Wipe all data in this section?')) {
-                appData[currentSection] = [];
-                currentPage[currentSection] = 0;
-                saveAndRender();
-                showToast('Cleared section', 'error');
+            appData[currentSection] = [];
+            currentPage[currentSection] = 0;
+            
+            // Wipe from cloud
+            if (localStorage.getItem('datapro_active_user')) {
+                 firebase.database().ref(`appData/${currentSection}`).set([]);
             }
-        });
+            
+            renderTable();
+            showToast('Cleared section', 'error');
+        }
+    });
 
         bulkDeleteBtn.addEventListener('click', () => {
             if (appData[currentSection].length > 0) {
                 appData[currentSection].pop();
-                saveAndRender();
+                
+                // Sync structural change
+                if (localStorage.getItem('datapro_active_user')) {
+                     firebase.database().ref(`appData/${currentSection}`).set(appData[currentSection]);
+                }
+                
+                renderTable();
                 showToast('Last row deleted', 'info');
             }
         });
@@ -649,7 +667,13 @@ document.addEventListener('DOMContentLoaded', () => {
         appData[section][rowIdx][colIdx] = value;
         checkDueSignals();
         
-        // Reset editing state and apply pending data after inactivity
+        // Instant Cell Push (Ultra Granular)
+        if (localStorage.getItem('datapro_active_user')) {
+            const db = firebase.database();
+            db.ref(`appData/${section}/${rowIdx}/${colIdx}`).set(value);
+        }
+
+        // Reset editing state after inactivity
         clearTimeout(localUpdateTimer);
         localUpdateTimer = setTimeout(() => { 
             isEditing = false; 
@@ -658,14 +682,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 pendingCloudData = null;
                 renderTable();
             }
-        }, 1500);
-
-        debounce(() => saveToFirebase(section), 1000)();
+        }, 800);
     };
 
     window.deleteRow = (section, rowIdx) => {
         appData[section].splice(rowIdx, 1);
-        saveAndRender();
+        
+        // Sync structural change
+        if (localStorage.getItem('datapro_active_user')) {
+            firebase.database().ref(`appData/${section}`).set(appData[section]);
+        }
+        
+        renderTable();
         showToast('Row deleted', 'info');
     };
 
@@ -695,8 +723,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveToFirebase(section) {
-        if (auth.currentUser) {
-            // Granular update: Only push the changed section
+        const db = firebase.database();
+        // Skip check if user is logged in via static credentials
+        if (localStorage.getItem('datapro_active_user')) {
             if (section) {
                 db.ref(`appData/${section}`).set(appData[section]);
             } else {
