@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex Elite - Smart Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div id="auth-container" class="auth-container">
+        <div class="auth-box">
+            <h1>Welcome</h1>
+            <p>Login to your account</p>
+            <form id="signin-form">
+                <div class="input-group">
+                    <label for="signin-email">Email</label>
+                    <input type="email" id="signin-email" placeholder="Email" required>
+                </div>
+                <div class="input-group">
+                    <label for="signin-password">Password</label>
+                    <input type="password" id="signin-password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn-primary">Login</button>
+            </form>
+        </div>
+    </div>
+    <div id="dashboard-container" class="dashboard-container hidden">
+        <div id="due-notification-banner" class="notification-banner hidden">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="due-notification-text">Checking for due payments...</span>
+            <button onclick="document.getElementById('nav-giving-data').click()">View Now</button>
+        </div>
+        <div class="main-layout">
+            <aside class="sidebar">
+            <div class="brand">
+                <i class="fas fa-diamond"></i>
+                <span>Vortex Elite</span>
+            </div>
+            <nav class="nav-menu">
+                <div class="nav-group active" id="data-entry-group">
+                    <div class="nav-item group-header">
+                        <i class="fas fa-database"></i>
+                        <span>DATA ENTRY</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div class="nav-group-content">
+                        <a href="#" class="nav-item active sub-item" id="nav-data-entry">
+                            <i class="fas fa-home"></i>
+                            <span>Home</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-buy-entry">
+                            <i class="fas fa-shopping-cart"></i>
+                            <span>Buy Entry</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-giving-data">
+                            <i class="fas fa-truck-loading"></i>
+                            <span>Sell Entry</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-kharch">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            <span>Kharch</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-upad">
+                            <i class="fas fa-hand-holding-usd"></i>
+                            <span>Upad</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-separator"></div>
+
+                <div class="nav-group active" id="report-group">
+                    <div class="nav-item group-header">
+                        <i class="fas fa-chart-line"></i>
+                        <span>REPORT</span>
+                        <i class="fas fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div class="nav-group-content">
+                        <a href="#" class="nav-item sub-item" id="nav-buy-report">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>Buy Report</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-sell-report">
+                            <i class="fas fa-file-contract"></i>
+                            <span>Sell Report</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-payment-report">
+                            <i class="fas fa-money-check-alt"></i>
+                            <span>Payment Report (Buy)</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-sell-payment-report">
+                            <i class="fas fa-hand-holding-usd"></i>
+                            <span>Sell Payment Report</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-kharch-report">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            <span>Kharch Report</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-upad-report">
+                            <i class="fas fa-user-minus"></i>
+                            <span>Upad Report</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-total-stock-report">
+                            <i class="fas fa-boxes"></i>
+                            <span>Total Stock</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-home-report">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Home Report</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="nav-separator"></div>
+                
+                <a href="#" class="nav-item" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </a>
+            </nav>
+        </aside>
+        <main class="main-content">
+
+
+            <header class="dashboard-header">
+                <div class="header-info">
+                    <h1 id="current-section-title">Data Entry Data</h1>
+                </div>
+                <div class="header-right">
+                    <div class="user-info">
+                        <span id="user-display-name">User</span>
+                        <span class="status-badge">Full Access</span>
+                    </div>
+                    <div class="avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </header>
+
+            <div id="report-controls" class="table-header-controls hidden">
+                <div class="report-filters">
+                    <div class="filter-group">
+                        <label>Start Date</label>
+                        <input type="date" id="report-start-date">
+                    </div>
+                    <div class="filter-group">
+                        <label>End Date</label>
+                        <input type="date" id="report-end-date">
+                    </div>
+                    <button class="btn-control btn-blue" id="generate-report-btn">
+                        <i class="fas fa-sync-alt"></i> Generate Report
+                    </button>
+                    <button class="btn-control btn-gray" id="print-report-btn">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-header-controls" id="crud-controls">
+                <div class="control-buttons">
+                    <button class="btn-control btn-blue add-row-btn" data-type="data-entry" id="add-row-trigger">
+                        <i class="fas fa-plus"></i> Add 1
+                    </button>
+                    <button class="btn-control btn-gray" id="add-50-trigger">
+                        <i class="fas fa-layer-group"></i> Add 50
+                    </button>
+                </div>
+                <div class="search-container">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search data...">
+                    </div>
+                    <button class="btn-control btn-red" id="bulk-delete">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <button class="btn-control btn-orange" id="clear-all">
+                        <i class="fas fa-broom"></i> Clear All
+                    </button>
+                </div>
+            </div>
+
+            <section class="data-table-container">
+                <div class="table-scroll" id="main-table-scroll">
+                    <!-- Dynamic sections here -->
+                </div>
+                <div id="report-result" class="report-container hidden">
+                    <!-- Report generated here -->
+                </div>
+                <div class="pagination-footer">
+                    <div id="pagination-controls" class="pagination-buttons">
+                        <!-- Navigation pages here -->
+                    </div>
+                    <div class="jump-to-page">
+                        <span>Jump to:</span>
+                        <input type="number" id="jump-page-input" min="1" placeholder="Page #">
+                        <button id="jump-page-btn" class="page-btn active">Go</button>
+                    </div>
+                    <div class="pagination-info">
+                        Showing 20 entries per page
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div> <!-- .main-layout -->
+</div> <!-- #dashboard-container -->
+
+    <script src="script.js"></script>
+</body>
+</html>
