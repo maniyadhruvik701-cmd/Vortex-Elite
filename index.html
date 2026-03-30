@@ -116,6 +116,14 @@
                             <i class="fas fa-file-alt"></i>
                             <span>Home Report</span>
                         </a>
+                        <a href="#" class="nav-item sub-item" id="nav-buy-ledger">
+                            <i class="fas fa-address-book"></i>
+                            <span>Buy Ledger</span>
+                        </a>
+                        <a href="#" class="nav-item sub-item" id="nav-sell-ledger">
+                            <i class="fas fa-address-card"></i>
+                            <span>Sell Ledger</span>
+                        </a>
                     </div>
                 </div>
                 
@@ -155,6 +163,11 @@
                         <label>End Date</label>
                         <input type="date" id="report-end-date">
                     </div>
+                    <div class="filter-group hidden" id="contact-filter-group">
+                        <label>Search Contact</label>
+                        <input type="text" id="report-contact-search" list="contact-datalist" placeholder="Type company name...">
+                        <datalist id="contact-datalist"></datalist>
+                    </div>
                     <button class="btn-control btn-blue" id="generate-report-btn">
                         <i class="fas fa-sync-alt"></i> Generate Report
                     </button>
@@ -180,6 +193,9 @@
                     </div>
                     <button class="btn-control btn-red" id="bulk-delete">
                         <i class="fas fa-trash"></i> Delete
+                    </button>
+                    <button class="btn-control btn-orange" id="restore-backup">
+                        <i class="fas fa-history"></i> RESTORE
                     </button>
                     <button class="btn-control btn-orange" id="clear-all">
                         <i class="fas fa-broom"></i> Clear All
