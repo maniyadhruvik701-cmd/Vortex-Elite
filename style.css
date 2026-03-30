@@ -277,13 +277,132 @@ select.table-input option { background: #1e293b; color: white; }
 
 /* Print optimization */
 @media print {
-    .sidebar, .dashboard-header, #report-controls, .nav-separator, .pagination-footer { display: none !important; }
+    .sidebar, .dashboard-header, #report-controls, .nav-separator, .pagination-footer, .notification-banner { display: none !important; }
     .main-content { padding: 0 !important; margin: 0 !important; display: block !important; }
-    .data-table-container { border: none !important; box-shadow: none !important; }
-    #report-result { display: block !important; width: 100% !important; margin: 0 !important; }
+    .data-table-container { border: none !important; box-shadow: none !important; overflow: visible !important; }
+    #report-result { display: block !important; width: 100% !important; margin: 0 !important; overflow: visible !important; }
     body { background: white !important; color: black !important; overflow: visible !important; }
-    .report-summary-table th { background: #eee !important; color: black !important; border-bottom: 2px solid black; }
     .report-summary-table td { color: black !important; border-bottom: 1px solid #ddd !important; }
-    .report-summary-table tr:last-child { background: #eee !important; color: black !important; border-top: 2px solid black; }
-    .report-summary-table tr:last-child td { color: black !important; }
+    
+    .printable-invoice {
+        background: white !important;
+        color: black !important;
+        padding: 0 !important;
+    }
+}
+
+/* Ledger Invoice Specific Styles */
+.printable-invoice {
+    background: white;
+    color: #1e293b;
+    padding: 3rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 3rem;
+    padding-bottom: 1rem;
+    position: relative;
+}
+
+.invoice-header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: #e2e8f0;
+}
+
+.invoice-title {
+    font-size: 2.25rem;
+    font-weight: 500;
+    color: #1e293b;
+    margin-bottom: 1rem;
+}
+
+.contact-details .company-label {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+}
+
+.contact-details .sub-detail {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin-bottom: 0.25rem;
+}
+
+.right-section {
+    text-align: right;
+}
+
+.business-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.business-sub {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 2rem;
+}
+
+.ledger-table th {
+    text-align: left;
+    padding: 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #1e293b;
+    border-bottom: 2px solid #1e293b;
+    border-top: 1px solid #e2e8f0;
+}
+
+/* Light blue line like the image */
+.ledger-table thead::after {
+    content: '';
+    display: block;
+    height: 3px;
+    background: #ccfbf1;
+    position: absolute;
+    width: 100%;
+}
+
+.ledger-table td {
+    padding: 1rem;
+    font-size: 0.95rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+
+.ledger-table tbody tr:nth-child(even) {
+    background: #f8fafc;
+}
+
+.total-row td {
+    padding: 1.5rem 1rem;
+    border-top: 2px solid #1e293b;
+    border-bottom: none;
+    font-size: 1.1rem;
+}
+
+.total-row td:nth-child(2) {
+    text-align: right;
+}
+
+.total-row strong {
+    font-size: 1.25rem;
+    color: #1e293b;
 }
