@@ -100,6 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             pendingCloudData = data;
                         } else {
                             appData = { ...appData, ...data };
+                            // Automatic background backup on every sync
+                            localStorage.setItem('vortex_cloud_backup', JSON.stringify(appData));
                             checkDueSignals();
                             renderTable();
                         }
@@ -147,6 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableScroll.classList.remove('hidden');
                 reportResult.classList.add('hidden');
                 document.querySelector('.pagination-footer').classList.remove('hidden');
+                if (document.getElementById('contact-filter-group')) {
+                    document.getElementById('contact-filter-group').classList.add('hidden');
+                }
 
                 renderTable();
             });
@@ -216,6 +221,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    const restoreBackupBtn = document.getElementById('restore-backup');
+    restoreBackupBtn.addEventListener('click', () => {
+        const backup = localStorage.getItem('vortex_cloud_backup') || localStorage.getItem('pis_admin_db_v2');
+        if (backup) {
+            const parsed = JSON.parse(backup);
+            if (confirm('RESTORE DATA? This will overwrite existing cloud data with local backup!')) {
+                appData = parsed;
+                if (localStorage.getItem('datapro_active_user')) {
+                     firebase.database().ref('appData').set(appData);
+                }
+                renderTable();
+                showToast('Database Restored Successfully', 'success');
+            }
+        } else {
+            showToast('No backup found on this device', 'error');
+        }
+    });
+
         bulkDeleteBtn.addEventListener('click', () => {
             if (appData[currentSection].length > 0) {
                 appData[currentSection].pop();
@@ -258,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tableScroll.classList.add('hidden');
             reportResult.classList.remove('hidden');
             document.querySelector('.pagination-footer').classList.add('hidden');
+            document.getElementById('contact-filter-group').classList.add('hidden');
             reportResult.innerHTML = '';
         };
 
@@ -273,6 +297,43 @@ document.addEventListener('DOMContentLoaded', () => {
         navTotalStock.onclick = (e) => { e.preventDefault(); setupReportSection('total-stock'); };
         const navHomeReport = document.getElementById('nav-home-report');
         navHomeReport.onclick = (e) => { e.preventDefault(); setupReportSection('home'); };
+
+        const navBuyLedger = document.getElementById('nav-buy-ledger');
+        const navSellLedger = document.getElementById('nav-sell-ledger');
+        const contactFilterGroup = document.getElementById('contact-filter-group');
+        const contactSearch = document.getElementById('report-contact-search');
+        const contactDatalist = document.getElementById('contact-datalist');
+
+        const setupLedgerSection = (type) => {
+            currentSection = `${type}-ledger`;
+            navItems.forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.sub-item').forEach(s => s.classList.remove('active'));
+            document.getElementById(`nav-${type}-ledger`).classList.add('active');
+            sectionTitle.textContent = `${type.charAt(0).toUpperCase() + type.slice(1)} Ledger`;
+
+            crudControls.classList.add('hidden');
+            reportControls.classList.remove('hidden');
+            tableScroll.classList.add('hidden');
+            reportResult.classList.remove('hidden');
+            document.querySelector('.pagination-footer').classList.add('hidden');
+            
+            // Show contact filter
+            contactFilterGroup.classList.remove('hidden');
+            
+            // Populate contact datalist
+            const sourceKey = type === 'buy' ? 'buy-entry' : 'giving-data';
+            const contacts = [...new Set(appData[sourceKey].map(row => row[1]))].filter(Boolean).sort();
+            contactDatalist.innerHTML = contacts.map(c => `<option value="${c}">`).join('');
+            contactSearch.value = '';
+            
+            reportResult.innerHTML = '';
+        };
+
+        navBuyLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('buy'); };
+        navSellLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('sell'); };
+
+        navBuyLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('buy'); };
+        navSellLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('sell'); };
 
         generateReportBtn.addEventListener('click', () => {
             const start = startDateInput.value;
@@ -396,6 +457,96 @@ document.addEventListener('DOMContentLoaded', () => {
                 html += `</tbody></table></div>`;
                 reportResult.innerHTML = html;
                 showToast('Stock Matrix Generated', 'success');
+                return;
+            }
+
+            if (currentSection === 'buy-ledger' || currentSection === 'sell-ledger') {
+                const isSell = currentSection.startsWith('sell');
+                const type = isSell ? 'giving-data' : 'buy-entry';
+                const contactSearch = document.getElementById('report-contact-search');
+                const contactName = contactSearch.value;
+
+                if (!contactName) {
+                    showToast('Please select a contact', 'error');
+                    return;
+                }
+
+                const data = appData[type];
+                const filtered = data.filter(row => 
+                    row[1] === contactName && 
+                    (!start || row[0] >= start) && 
+                    (!end || row[0] <= end)
+                );
+
+                if (filtered.length === 0) {
+                    showToast('No entries found for this contact', 'info');
+                    reportResult.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text-dim);">No matching entries found.</div>';
+                    return;
+                }
+
+                let totalAmt = 0;
+
+                const amtIndex = 7;
+                const statusIndex = isSell ? 9 : 8;
+                const timelineIndex = isSell ? 8 : null;
+
+                reportResult.innerHTML = `
+                    <div class="invoice-container printable-invoice">
+                        <header class="invoice-header">
+                            <div class="left-section">
+                                <h1 class="invoice-title">${isSell ? 'Contacts Receivable' : 'Contacts Payable'}</h1>
+                                <div class="contact-details">
+                                    <p class="company-label">Contact: <strong>HONEST EXPORT</strong></p>
+                                    <p class="sub-detail">PLOT NO. 401/402, PANDOL INDUSTIAL CO.OP SER SOCIETY LID, Ved Road Surat, 395004, Gujarat</p>
+                                    <p class="sub-detail">Mobile : 9924297264</p>
+                                </div>
+                            </div>
+                            <div class="right-section">
+                                <h2 class="business-name">${contactName}</h2>
+                                <p class="business-sub">SURAT</p>
+                            </div>
+                        </header>
+
+                        <div class="invoice-table-wrapper">
+                            <table class="ledger-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Description</th>
+                                        <th>Due Date (Remaining)</th>
+                                        <th>Amount (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${filtered.map((row) => {
+                                        const amt = parseFloat(row[amtIndex] || 0);
+                                        totalAmt += amt;
+                                        const date = row[0] ? new Date(row[0]).toLocaleDateString('en-GB') : '-';
+                                        const timeline = timelineIndex ? row[timelineIndex] : '-';
+                                        const sku = row[2] || '-';
+                                        const code = row[3] || '-';
+                                        
+                                        return `
+                                            <tr>
+                                                <td>${date}</td>
+                                                <td>${isSell ? 'Sales' : 'Purchase'}#${sku}-${code}</td>
+                                                <td>${timeline || '-'}</td>
+                                                <td>${amt.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                                <tfoot>
+                                    <tr class="total-row">
+                                        <td colspan="3" style="text-align: right; padding-right: 2rem;">Total</td>
+                                        <td><strong>₹ ${totalAmt.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                showToast(`${isSell ? 'Sell' : 'Buy'} Ledger Generated`, 'success');
                 return;
             }
 
@@ -721,6 +872,55 @@ document.addEventListener('DOMContentLoaded', () => {
             banner.classList.add('hidden');
         }
     }
+
+    // --- Keyboard Navigation ---
+    tableScroll.addEventListener('keydown', (e) => {
+        if (!e.target.classList.contains('table-input')) return;
+
+        const currentInput = e.target;
+        const currentTd = currentInput.closest('td');
+        const currentTr = currentTd.closest('tr');
+        const allTds = Array.from(currentTr.querySelectorAll('td'));
+        const colIdx = allTds.indexOf(currentTd);
+        const rows = Array.from(tableScroll.querySelectorAll('tbody tr'));
+        const rowIdx = rows.indexOf(currentTr);
+
+        let targetInput = null;
+
+        switch (e.key) {
+            case 'ArrowRight':
+                const nextTd = allTds[colIdx + 1];
+                if (nextTd) targetInput = nextTd.querySelector('.table-input');
+                break;
+            case 'ArrowLeft':
+                const prevTd = allTds[colIdx - 1];
+                if (prevTd) targetInput = prevTd.querySelector('.table-input');
+                break;
+            case 'ArrowDown':
+                const nextRow = rows[rowIdx + 1];
+                if (nextRow) targetInput = nextRow.querySelectorAll('td')[colIdx]?.querySelector('.table-input');
+                break;
+            case 'ArrowUp':
+                const prevRow = rows[rowIdx - 1];
+                if (prevRow) targetInput = prevRow.querySelectorAll('td')[colIdx]?.querySelector('.table-input');
+                break;
+            case 'Enter':
+                e.preventDefault();
+                const nextColTd = allTds[colIdx + 1];
+                if (nextColTd) {
+                    targetInput = nextColTd.querySelector('.table-input');
+                } else {
+                    const nextLine = rows[rowIdx + 1];
+                    if (nextLine) targetInput = nextLine.querySelector('.table-input');
+                }
+                break;
+        }
+
+        if (targetInput) {
+            targetInput.focus();
+            if (targetInput.select) targetInput.select();
+        }
+    });
 
     function saveToFirebase(section) {
         const db = firebase.database();
