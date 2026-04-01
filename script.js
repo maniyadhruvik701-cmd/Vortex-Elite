@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Global Controls
     const addRowBtnTrigger = document.getElementById('add-row-trigger');
-    const add50Btn = document.querySelector('.btn-gray');
+    const add50Btn = document.getElementById('add-50-trigger');
     const clearAllBtn = document.getElementById('clear-all');
     const searchInput = document.querySelector('.search-box input');
     const bulkDeleteBtn = document.getElementById('bulk-delete');
@@ -164,12 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
 
-    const addRowBtnTrigger = document.getElementById('add-row-trigger');
-    const add50Btn = document.getElementById('add-50-trigger');
-    const clearAllBtn = document.getElementById('clear-all');
-    const searchInput = document.querySelector('.search-box input');
-    const bulkDeleteBtn = document.getElementById('bulk-delete');
-    const sectionTitle = document.getElementById('current-section-title');
+
 
     // ... (State & Config ...)
 
@@ -298,39 +293,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const navHomeReport = document.getElementById('nav-home-report');
         navHomeReport.onclick = (e) => { e.preventDefault(); setupReportSection('home'); };
 
-        const navCompanyBuyInvoice = document.getElementById('nav-company-buy-invoice');
-        const navCompanySellInvoice = document.getElementById('nav-company-sell-invoice');
 
-        const setupInvoiceSection = (type) => {
-            currentSection = `company-${type}-invoice`;
-            navItems.forEach(n => n.classList.remove('active'));
-            document.querySelectorAll('.sub-item').forEach(s => s.classList.remove('active'));
-            document.getElementById(`nav-company-${type}-invoice`).classList.add('active');
-            sectionTitle.textContent = `Company ${type.charAt(0).toUpperCase() + type.slice(1)} Invoice`;
 
-            crudControls.classList.add('hidden');
-            reportControls.classList.remove('hidden');
-            tableScroll.classList.add('hidden');
-            reportResult.classList.remove('hidden');
-            document.querySelector('.pagination-footer').classList.add('hidden');
-            
-            // Show contact filter
-            contactFilterGroup.classList.remove('hidden');
-            
-            // Populate contact datalist
-            const sourceKey = type === 'buy' ? 'buy-entry' : 'giving-data';
-            const contacts = [...new Set(appData[sourceKey].map(row => row[1]))].filter(Boolean).sort();
-            contactDatalist.innerHTML = contacts.map(c => `<option value="${c}">`).join('');
-            contactSearch.value = '';
-            
-            reportResult.innerHTML = '';
-        };
 
-        navCompanyBuyInvoice.onclick = (e) => { e.preventDefault(); setupInvoiceSection('buy'); };
-        navCompanySellInvoice.onclick = (e) => { e.preventDefault(); setupInvoiceSection('sell'); };
-
-        const navBuyLedger = document.getElementById('nav-buy-ledger');
-        const navSellLedger = document.getElementById('nav-sell-ledger');
         const contactFilterGroup = document.getElementById('contact-filter-group');
         const contactSearch = document.getElementById('report-contact-search');
         const contactDatalist = document.getElementById('contact-datalist');
@@ -360,11 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
             reportResult.innerHTML = '';
         };
 
-        navBuyLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('buy'); };
-        navSellLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('sell'); };
-
-        navBuyLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('buy'); };
-        navSellLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('sell'); };
+        if (navBuyLedger) navBuyLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('buy'); };
+        if (navSellLedger) navSellLedger.onclick = (e) => { e.preventDefault(); setupLedgerSection('sell'); };
 
         generateReportBtn.addEventListener('click', () => {
             const start = startDateInput.value;
@@ -584,130 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (currentSection === 'company-buy-invoice' || currentSection === 'company-sell-invoice') {
-                const isSell = currentSection.includes('sell');
-                const type = isSell ? 'giving-data' : 'buy-entry';
-                const contactSearch = document.getElementById('report-contact-search');
-                const contactName = contactSearch.value;
 
-                if (!contactName) {
-                    showToast('Please select a company name', 'error');
-                    return;
-                }
-
-                const data = appData[type];
-                // To be safe and flexible, allow range if End Date is provided, otherwise single day
-                const realEnd = end || start;
-                const filtered = data.filter(row => 
-                    row[1] && row[1].toString().trim() === contactName.trim() && 
-                    row[0] >= start && row[0] <= realEnd
-                );
-
-                if (filtered.length === 0) {
-                    showToast('No entries found for this company on selected date', 'info');
-                    reportResult.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text-dim);">No matching entries found for the selected date and company.</div>';
-                    return;
-                }
-
-                let totalAmt = 0;
-                let totalWeight = 0;
-                const amtIndex = 7;
-                const weightIndex = 5;
-
-                const invoiceNo = Math.floor(Math.random() * 90000) + 10000;
-                const dateFormatted = new Date(start).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-
-                reportResult.innerHTML = `
-                    <div class="invoice-container printable-invoice">
-                        <div class="invoice-badge">${isSell ? 'Tax Invoice' : 'Purchase Bill'}</div>
-                        <header class="invoice-header">
-                            <div class="left-section">
-                                <h1 class="invoice-title">HONEST EXPORT</h1>
-                                <div class="contact-details">
-                                    <p class="sub-detail">PLOT NO. 401/402, PANDOL INDUSTIAL CO.OP SER SOCIETY LID, Ved Road Surat, 395004, Gujarat</p>
-                                    <p class="sub-detail">Mobile : 9924297264</p>
-                                    <p class="sub-detail" style="margin-top: 1rem; color: #1e293b; font-weight: 700;">BILL TO:</p>
-                                    <h2 class="business-name" style="font-size: 1.5rem; color: var(--primary);">${contactName}</h2>
-                                    <p class="sub-detail">SURAT, GUJARAT</p>
-                                </div>
-                            </div>
-                            <div class="right-section" style="text-align: right;">
-                                <div style="margin-bottom: 2rem;">
-                                    <p style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em;">Invoice Number</p>
-                                    <p style="font-size: 1.5rem; font-weight: 800; color: #1e293b;">#INV-${invoiceNo}</p>
-                                </div>
-                                <div style="margin-bottom: 2rem;">
-                                    <p style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em;">Date</p>
-                                    <p style="font-size: 1.25rem; font-weight: 700; color: #1e293b;">${dateFormatted}</p>
-                                </div>
-                                <div>
-                                    <p style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em;">Status</p>
-                                    <p style="font-size: 1rem; font-weight: 800; color: #22c55e;">COMPLETED</p>
-                                </div>
-                            </div>
-                        </header>
-
-                        <div class="invoice-table-wrapper">
-                            <table class="ledger-table invoice-items-table">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Description (SKU / CODE)</th>
-                                        <th>Size</th>
-                                        <th>Weight (KG)</th>
-                                        <th>Price</th>
-                                        <th style="text-align: right;">Total (₹)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${filtered.map((row, i) => {
-                                        const amt = parseFloat(row[amtIndex] || 0);
-                                        const wgt = parseFloat(row[weightIndex] || 0);
-                                        totalAmt += amt;
-                                        totalWeight += wgt;
-                                        const sku = row[2] || '-';
-                                        const code = row[3] || '-';
-                                        const size = row[4] || '-';
-                                        const price = row[6] || '0';
-                                        
-                                        return `
-                                            <tr>
-                                                <td style="width: 40px; color: #94a3b8;">${(i + 1).toString().padStart(2, '0')}</td>
-                                                <td>
-                                                    <div style="font-weight: 700; color: #1e293b;">${sku}</div>
-                                                    <div style="font-size: 0.75rem; color: #64748b;">Code: ${code}</div>
-                                                </td>
-                                                <td>${size}</td>
-                                                <td>${wgt}</td>
-                                                <td>₹ ${parseFloat(price).toLocaleString()}</td>
-                                                <td style="text-align: right; font-weight: 800; color: #1e293b;">${amt.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
-                                            </tr>
-                                        `;
-                                    }).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div style="display: flex; justify-content: flex-end; margin-top: 3rem;">
-                            <div style="width: 350px;">
-                                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9;">
-                                    <span style="color: #64748b; font-weight: 600;">Total Weight:</span>
-                                    <span style="font-weight: 700; color: #1e293b;">${totalWeight.toLocaleString()} KG</span>
-                                </div>
-                                <div style="display: flex; justify-content: space-between; padding: 1.5rem 0; border-top: 2px solid #1e293b; margin-top: 0.5rem;">
-                                    <span style="font-size: 1.25rem; font-weight: 800; color: #1e293b;">Grand Total:</span>
-                                    <span style="font-size: 1.5rem; font-weight: 900; color: var(--primary);">₹ ${totalAmt.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
-                                </div>
-                                <div style="margin-top: 3rem; text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 1rem;">
-                                    <p style="font-size: 0.75rem; color: #94a3b8; font-style: italic;">Thank you for your business!</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                showToast(`Invoice Generated for ${contactName}`, 'success');
-                return;
-            }
 
             if (currentSection.includes('payment-report') || currentSection === 'kharch-report') {
                 const isSell = currentSection.startsWith('sell-');
