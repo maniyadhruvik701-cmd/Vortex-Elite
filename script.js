@@ -298,6 +298,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const navHomeReport = document.getElementById('nav-home-report');
         navHomeReport.onclick = (e) => { e.preventDefault(); setupReportSection('home'); };
 
+        const navCompanyBuyInvoice = document.getElementById('nav-company-buy-invoice');
+        const navCompanySellInvoice = document.getElementById('nav-company-sell-invoice');
+
+        const setupInvoiceSection = (type) => {
+            currentSection = `company-${type}-invoice`;
+            navItems.forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.sub-item').forEach(s => s.classList.remove('active'));
+            document.getElementById(`nav-company-${type}-invoice`).classList.add('active');
+            sectionTitle.textContent = `Company ${type.charAt(0).toUpperCase() + type.slice(1)} Invoice`;
+
+            crudControls.classList.add('hidden');
+            reportControls.classList.remove('hidden');
+            tableScroll.classList.add('hidden');
+            reportResult.classList.remove('hidden');
+            document.querySelector('.pagination-footer').classList.add('hidden');
+            
+            // Show contact filter
+            contactFilterGroup.classList.remove('hidden');
+            
+            // Populate contact datalist
+            const sourceKey = type === 'buy' ? 'buy-entry' : 'giving-data';
+            const contacts = [...new Set(appData[sourceKey].map(row => row[1]))].filter(Boolean).sort();
+            contactDatalist.innerHTML = contacts.map(c => `<option value="${c}">`).join('');
+            contactSearch.value = '';
+            
+            reportResult.innerHTML = '';
+        };
+
+        navCompanyBuyInvoice.onclick = (e) => { e.preventDefault(); setupInvoiceSection('buy'); };
+        navCompanySellInvoice.onclick = (e) => { e.preventDefault(); setupInvoiceSection('sell'); };
+
         const navBuyLedger = document.getElementById('nav-buy-ledger');
         const navSellLedger = document.getElementById('nav-sell-ledger');
         const contactFilterGroup = document.getElementById('contact-filter-group');
@@ -339,8 +370,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const start = startDateInput.value;
             const end = endDateInput.value;
             
-            if (!start || !end) {
-                showToast('Please select both dates', 'error');
+            // For Company Invoices, we only REALLY need the start date (acting as target date)
+            const isInvoice = currentSection.includes('invoice');
+
+            if (!start || (!isInvoice && !end)) {
+                showToast(isInvoice ? 'Please select a date' : 'Please select both dates', 'error');
                 return;
             }
 
@@ -550,6 +584,131 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            if (currentSection === 'company-buy-invoice' || currentSection === 'company-sell-invoice') {
+                const isSell = currentSection.includes('sell');
+                const type = isSell ? 'giving-data' : 'buy-entry';
+                const contactSearch = document.getElementById('report-contact-search');
+                const contactName = contactSearch.value;
+
+                if (!contactName) {
+                    showToast('Please select a company name', 'error');
+                    return;
+                }
+
+                const data = appData[type];
+                // To be safe and flexible, allow range if End Date is provided, otherwise single day
+                const realEnd = end || start;
+                const filtered = data.filter(row => 
+                    row[1] && row[1].toString().trim() === contactName.trim() && 
+                    row[0] >= start && row[0] <= realEnd
+                );
+
+                if (filtered.length === 0) {
+                    showToast('No entries found for this company on selected date', 'info');
+                    reportResult.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text-dim);">No matching entries found for the selected date and company.</div>';
+                    return;
+                }
+
+                let totalAmt = 0;
+                let totalWeight = 0;
+                const amtIndex = 7;
+                const weightIndex = 5;
+
+                const invoiceNo = Math.floor(Math.random() * 90000) + 10000;
+                const dateFormatted = new Date(start).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                reportResult.innerHTML = `
+                    <div class="invoice-container printable-invoice">
+                        <div class="invoice-badge">${isSell ? 'Tax Invoice' : 'Purchase Bill'}</div>
+                        <header class="invoice-header">
+                            <div class="left-section">
+                                <h1 class="invoice-title">HONEST EXPORT</h1>
+                                <div class="contact-details">
+                                    <p class="sub-detail">PLOT NO. 401/402, PANDOL INDUSTIAL CO.OP SER SOCIETY LID, Ved Road Surat, 395004, Gujarat</p>
+                                    <p class="sub-detail">Mobile : 9924297264</p>
+                                    <p class="sub-detail" style="margin-top: 1rem; color: #1e293b; font-weight: 700;">BILL TO:</p>
+                                    <h2 class="business-name" style="font-size: 1.5rem; color: var(--primary);">${contactName}</h2>
+                                    <p class="sub-detail">SURAT, GUJARAT</p>
+                                </div>
+                            </div>
+                            <div class="right-section" style="text-align: right;">
+                                <div style="margin-bottom: 2rem;">
+                                    <p style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em;">Invoice Number</p>
+                                    <p style="font-size: 1.5rem; font-weight: 800; color: #1e293b;">#INV-${invoiceNo}</p>
+                                </div>
+                                <div style="margin-bottom: 2rem;">
+                                    <p style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em;">Date</p>
+                                    <p style="font-size: 1.25rem; font-weight: 700; color: #1e293b;">${dateFormatted}</p>
+                                </div>
+                                <div>
+                                    <p style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; font-weight: 800; letter-spacing: 0.1em;">Status</p>
+                                    <p style="font-size: 1rem; font-weight: 800; color: #22c55e;">COMPLETED</p>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div class="invoice-table-wrapper">
+                            <table class="ledger-table invoice-items-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Description (SKU / CODE)</th>
+                                        <th>Size</th>
+                                        <th>Weight (KG)</th>
+                                        <th>Price</th>
+                                        <th style="text-align: right;">Total (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${filtered.map((row, i) => {
+                                        const amt = parseFloat(row[amtIndex] || 0);
+                                        const wgt = parseFloat(row[weightIndex] || 0);
+                                        totalAmt += amt;
+                                        totalWeight += wgt;
+                                        const sku = row[2] || '-';
+                                        const code = row[3] || '-';
+                                        const size = row[4] || '-';
+                                        const price = row[6] || '0';
+                                        
+                                        return `
+                                            <tr>
+                                                <td style="width: 40px; color: #94a3b8;">${(i + 1).toString().padStart(2, '0')}</td>
+                                                <td>
+                                                    <div style="font-weight: 700; color: #1e293b;">${sku}</div>
+                                                    <div style="font-size: 0.75rem; color: #64748b;">Code: ${code}</div>
+                                                </td>
+                                                <td>${size}</td>
+                                                <td>${wgt}</td>
+                                                <td>₹ ${parseFloat(price).toLocaleString()}</td>
+                                                <td style="text-align: right; font-weight: 800; color: #1e293b;">${amt.toLocaleString('en-IN', {minimumFractionDigits: 2})}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; margin-top: 3rem;">
+                            <div style="width: 350px;">
+                                <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f1f5f9;">
+                                    <span style="color: #64748b; font-weight: 600;">Total Weight:</span>
+                                    <span style="font-weight: 700; color: #1e293b;">${totalWeight.toLocaleString()} KG</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding: 1.5rem 0; border-top: 2px solid #1e293b; margin-top: 0.5rem;">
+                                    <span style="font-size: 1.25rem; font-weight: 800; color: #1e293b;">Grand Total:</span>
+                                    <span style="font-size: 1.5rem; font-weight: 900; color: var(--primary);">₹ ${totalAmt.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                                </div>
+                                <div style="margin-top: 3rem; text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 1rem;">
+                                    <p style="font-size: 0.75rem; color: #94a3b8; font-style: italic;">Thank you for your business!</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                showToast(`Invoice Generated for ${contactName}`, 'success');
+                return;
+            }
+
             if (currentSection.includes('payment-report') || currentSection === 'kharch-report') {
                 const isSell = currentSection.startsWith('sell-');
                 const isKharch = currentSection === 'kharch-report';
@@ -701,25 +860,39 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTable() {
         if (currentSection.includes('report')) return; // Don't render CRUD table for reports
 
+        // Save current focus and selection
+        const activeItem = document.activeElement;
+        let focusedInfo = null;
+        if (activeItem && activeItem.classList.contains('table-input')) {
+            const tr = activeItem.closest('tr');
+            if (tr) {
+                const tds = Array.from(tr.querySelectorAll('td'));
+                focusedInfo = {
+                    originalIdx: tr.getAttribute('data-idx'),
+                    colIdx: tds.indexOf(activeItem.parentElement),
+                    selectionStart: activeItem.selectionStart,
+                    selectionEnd: activeItem.selectionEnd
+                };
+            }
+        }
+
         const query = searchInput.value.toLowerCase();
         let filteredData = appData[currentSection].map((row, idx) => ({ data: row, originalIndex: idx }));
 
         if (query) {
             filteredData = filteredData.filter(item =>
-                item.data.some(val => val.toLowerCase().includes(query))
+                item.data.some(val => val && val.toString().toLowerCase().includes(query))
             );
         }
 
         const totalItems = filteredData.length;
         const totalPages = Math.ceil(totalItems / PAGE_SIZE);
 
-        // Bound current page
         if (currentPage[currentSection] >= totalPages && totalPages > 0) currentPage[currentSection] = totalPages - 1;
 
         const startIdx = currentPage[currentSection] * PAGE_SIZE;
         const pageItems = filteredData.slice(startIdx, startIdx + PAGE_SIZE);
 
-        // Build Table
         let html = `
             <table>
                 <thead>
@@ -745,23 +918,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     const statusClass = val === 'Paid' ? 'status-paid' : (val === 'Pending' ? 'status-pending' : '');
                     html += `
                         <td>
-                            <select class="table-input ${statusClass}" onchange="updateData('${currentSection}', ${originalDataIdx}, ${colIdx}, this.value); renderTable();">
+                            <select class="table-input ${statusClass}" 
+                                onchange="updateData('${currentSection}', ${originalDataIdx}, ${colIdx}, this.value, this); renderTable();"
+                                onfocus="isEditing = true" onblur="isEditing = false">
                                 <option value="" ${!val ? 'selected' : ''} disabled>Select</option>
                                 <option value="Pending" ${val === 'Pending' ? 'selected' : ''}>Pending</option>
                                 <option value="Paid" ${val === 'Paid' ? 'selected' : ''}>Paid</option>
                             </select>
                         </td>`;
                 } else {
-                    const widthStyle = type === 'text' ? `style="width: ${Math.max(14, val.length + 2)}ch"` : '';
-
-                    // Signal Logic for Sell Entry Timeline
+                    const widthStyle = type === 'text' ? `style="width: ${Math.max(14, (val ? val.toString().length : 0) + 2)}ch"` : '';
                     let dueClass = '';
                     if (currentSection === 'giving-data' && colIdx === 8 && val && val <= todayStr) {
-                        const status = item.data[9]; // Payment status
+                        const status = item.data[9];
                         if (status === 'Pending') dueClass = 'due-signal-input';
                     }
 
-                    html += `<td><input type="${type}" class="table-input ${dueClass}" value="${val}" ${widthStyle} oninput="updateData('${currentSection}', ${originalDataIdx}, ${colIdx}, this.value)"></td>`;
+                    html += `<td><input type="${type}" class="table-input ${dueClass}" value="${val}" ${widthStyle} 
+                        oninput="updateData('${currentSection}', ${originalDataIdx}, ${colIdx}, this.value, this)"
+                        onfocus="isEditing = true" onblur="isEditing = false"></td>`;
                 }
             });
 
@@ -780,6 +955,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         html += `</tbody></table>`;
         tableScroll.innerHTML = html;
+
+        // Restore focus and selection
+        if (focusedInfo) {
+            const targetTr = tableScroll.querySelector(`tr[data-idx="${focusedInfo.originalIdx}"]`);
+            if (targetTr) {
+                const targetTd = targetTr.querySelectorAll('td')[focusedInfo.colIdx];
+                const input = targetTd?.querySelector('.table-input');
+                if (input) {
+                    input.focus();
+                    if (typeof input.selectionStart === 'number' && focusedInfo.selectionStart !== null) {
+                        input.selectionStart = focusedInfo.selectionStart;
+                        input.selectionEnd = focusedInfo.selectionEnd;
+                    }
+                }
+            }
+        }
 
         renderPagination(totalPages);
     }
@@ -813,10 +1004,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Global Operations (Exposed for inline handlers) ---
-    window.updateData = (section, rowIdx, colIdx, value) => {
+    window.updateData = (section, rowIdx, colIdx, value, el) => {
         isEditing = true;
         appData[section][rowIdx][colIdx] = value;
         checkDueSignals();
+
+        // Immediate width update for text inputs (expand as you type)
+        if (el && el.tagName === 'INPUT' && el.type === 'text') {
+            el.style.width = Math.max(14, value.length + 2) + 'ch';
+        }
+
+        // Update status colors for select boxes
+        if (el && el.tagName === 'SELECT') {
+            el.className = `table-input ${value === 'Paid' ? 'status-paid' : (value === 'Pending' ? 'status-pending' : '')}`;
+        }
         
         // Instant Cell Push (Ultra Granular)
         if (localStorage.getItem('datapro_active_user')) {
