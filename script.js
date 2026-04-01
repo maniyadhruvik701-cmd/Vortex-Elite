@@ -293,9 +293,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const navHomeReport = document.getElementById('nav-home-report');
         navHomeReport.onclick = (e) => { e.preventDefault(); setupReportSection('home'); };
 
-
-
-
+        const navBuyLedger = document.getElementById('nav-buy-ledger');
+        const navSellLedger = document.getElementById('nav-sell-ledger');
         const contactFilterGroup = document.getElementById('contact-filter-group');
         const contactSearch = document.getElementById('report-contact-search');
         const contactDatalist = document.getElementById('contact-datalist');
