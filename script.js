@@ -823,7 +823,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const startIdx = currentPage[currentSection] * PAGE_SIZE;
         const pageItems = filteredData.slice(startIdx, startIdx + PAGE_SIZE);
 
+        let uniqueNames = new Set();
+        appData[currentSection].forEach(row => {
+            if(row[1]) uniqueNames.add(row[1]);
+        });
+        const suggestionsOptions = Array.from(uniqueNames).sort().map(n => `<option value="${n}">`).join('');
+
         let html = `
+            <datalist id="company-suggest">${suggestionsOptions}</datalist>
             <table>
                 <thead>
                     <tr>
@@ -864,9 +871,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (status === 'Pending') dueClass = 'due-signal-input';
                     }
 
-                    html += `<td><input type="${type}" class="table-input ${dueClass}" value="${val}" ${widthStyle} 
+                    let listAttr = '';
+                    if (colIdx === 1 && type === 'text') {
+                        listAttr = 'list="company-suggest"';
+                    }
+
+                    html += `<td><input type="${type}" ${listAttr} class="table-input ${dueClass}" value="${val}" ${widthStyle} 
                         oninput="updateData('${currentSection}', ${originalDataIdx}, ${colIdx}, this.value, this)"
-                        onfocus="isEditing = true" onblur="isEditing = false"></td>`;
+                        onfocus="isEditing = true" onblur="isEditing = false" autocomplete="off"></td>`;
                 }
             });
 
