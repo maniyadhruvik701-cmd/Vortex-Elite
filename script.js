@@ -484,68 +484,84 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (currentSection === 'total-stock-report') {
-                const data = appData['buy-entry'];
-                const filtered = data.filter(row => row[0] >= start && row[0] <= end);
+                const buyData = appData['buy-entry'] || [];
+                const sellData = appData['giving-data'] || [];
+                
+                const buyFiltered = buyData.filter(row => row[0] >= start && row[0] <= end);
+                const sellFiltered = sellData.filter(row => row[0] >= start && row[0] <= end);
 
-                if (filtered.length === 0) {
+                if (buyFiltered.length === 0 && sellFiltered.length === 0) {
                     showToast('No data found for these dates', 'info');
                     reportResult.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text-dim);">No data records found for the selected period.</div>';
                     return;
                 }
 
-                const skus = [...new Set(filtered.map(r => r[2]))].sort();
-                const codes = [...new Set(filtered.map(r => r[3]))].sort();
+                const allRows = [...buyFiltered, ...sellFiltered];
+                const skus = [...new Set(allRows.map(r => r[2]))].filter(Boolean).sort();
+                const codes = [...new Set(allRows.map(r => r[3]))].filter(Boolean).sort();
 
                 let html = `
                     <div class="report-header" style="text-align:center; margin-bottom: 2rem;">
-                        <h2 style="color: var(--primary);">Total Stock Matrix (Pivot)</h2>
+                        <h2 style="color: var(--primary);">Total Stock Detailed Report</h2>
                         <p style="color: var(--text-dim);">${start} to ${end}</p>
                     </div>
-                    <div style="overflow-x: auto; width: 100%; border-radius: 1rem; border: 1px solid rgba(255,255,255,0.05);">
-                        <table class="report-summary-table" style="min-width: 100%;">
-                            <thead>
-                                <tr>
-                                    <th>SKU / CODE</th>
-                                    ${codes.map(c => `<th>${c}</th>`).join('')}
-                                    <th style="background: rgba(var(--primary-rgb), 0.2);">TOTAL</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <table class="report-summary-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>SKU</th>
+                                <th>CODE</th>
+                                <th>Buy Weight</th>
+                                <th>Sell Weight</th>
+                                <th style="background: rgba(249, 115, 22, 0.2);">Net Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                 `;
 
-                const colTotals = new Array(codes.length).fill(0);
-                let grandTotal = 0;
+                let grandBuyWgt = 0;
+                let grandSellWgt = 0;
+                let grandNetWgt = 0;
+                let count = 1;
 
                 skus.forEach(sku => {
-                    let rowTotal = 0;
-                    html += `<tr><td style="font-weight: 700;">${sku}</td>`;
-                    
-                    codes.forEach((code, i) => {
-                        const exists = filtered.some(r => r[2] === sku && r[3] === code);
-                        const val = exists ? 1 : 0;
-                        rowTotal += val;
-                        colTotals[i] += val;
-                        html += `<td style="opacity: ${val ? '1' : '0.3'}; color: ${val ? 'var(--primary)' : 'var(--text-dim)'};">${val}</td>`;
-                    });
+                    codes.forEach(code => {
+                        const cellBuyWgt = buyFiltered.filter(r => r[2] === sku && r[3] === code).reduce((sum, r) => sum + parseFloat(r[5] || 0), 0);
+                        const cellSellWgt = sellFiltered.filter(r => r[2] === sku && r[3] === code).reduce((sum, r) => sum + parseFloat(r[5] || 0), 0);
+                        let cellWgt = cellBuyWgt - cellSellWgt;
+                        if (cellWgt < 0) cellWgt = 0;
 
-                    grandTotal += rowTotal;
-                    html += `
-                        <td style="font-weight: 800; color: white; background: rgba(255,255,255,0.05);">${rowTotal}</td>
-                    </tr>`;
+                        if (cellBuyWgt > 0 || cellSellWgt > 0) {
+                            grandBuyWgt += cellBuyWgt;
+                            grandSellWgt += cellSellWgt;
+                            grandNetWgt += cellWgt;
+
+                            html += `
+                                <tr>
+                                    <td>${count++}</td>
+                                    <td style="font-weight: 700;">${sku}</td>
+                                    <td style="font-weight: 700; color: var(--text-dim);">${code}</td>
+                                    <td style="color: #22c55e;">${cellBuyWgt > 0 ? parseFloat(cellBuyWgt.toFixed(3)) : '-'}</td>
+                                    <td style="color: #ef4444;">${cellSellWgt > 0 ? parseFloat(cellSellWgt.toFixed(3)) : '-'}</td>
+                                    <td style="font-weight: 800; color: #f97316;">${cellWgt > 0 ? parseFloat(cellWgt.toFixed(3)) : '-'}</td>
+                                </tr>
+                            `;
+                        }
+                    });
                 });
 
-                // Add footer row
                 html += `
                     <tr style="background: var(--primary); color: white; font-weight: 900;">
-                        <td>GRAND TOTAL:</td>
-                        ${colTotals.map(t => `<td>${t}</td>`).join('')}
-                        <td style="font-size: 1.25rem;">${grandTotal}</td>
+                        <td colspan="3" style="text-align:right; padding-right: 2rem;">GRAND TOTAL:</td>
+                        <td>${parseFloat(grandBuyWgt.toFixed(3))}</td>
+                        <td>${parseFloat(grandSellWgt.toFixed(3))}</td>
+                        <td style="font-size: 1.25rem;">${parseFloat(grandNetWgt.toFixed(3))}</td>
                     </tr>
+                </tbody></table>
                 `;
 
-                html += `</tbody></table></div>`;
                 reportResult.innerHTML = html;
-                showToast('Stock Matrix Generated', 'success');
+                showToast('Detailed Stock Report Generated', 'success');
                 return;
             }
 
