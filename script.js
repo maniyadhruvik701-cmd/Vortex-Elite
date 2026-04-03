@@ -491,9 +491,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="left-section">
                                 <h1 class="invoice-title">${isSell ? 'Contacts Receivable' : 'Contacts Payable'}</h1>
                                 <div class="contact-details">
-                                    <p class="company-label">Contact: <strong>HONEST EXPORT</strong></p>
-                                    <p class="sub-detail">PLOT NO. 401/402, PANDOL INDUSTIAL CO.OP SER SOCIETY LID, Ved Road Surat, 395004, Gujarat</p>
-                                    <p class="sub-detail">Mobile : 9924297264</p>
+                                    <p class="company-label">Contact: <strong>VYANI ENTERPRISE</strong></p>
+                                    <p class="sub-detail">PLOT NO. 467, PANDOL INDUSTIAL CO.OP SER SOCIETY LID, Ved Road Surat, 395004, Gujarat</p>
+                                    <p class="sub-detail">Mobile : 7859900729</p>
                                 </div>
                             </div>
                             <div class="right-section">
