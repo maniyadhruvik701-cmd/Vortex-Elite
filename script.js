@@ -293,6 +293,100 @@ document.addEventListener('DOMContentLoaded', () => {
         const navHomeReport = document.getElementById('nav-home-report');
         navHomeReport.onclick = (e) => { e.preventDefault(); setupReportSection('home'); };
 
+        const navPending = document.getElementById('nav-pending');
+        if (navPending) {
+            navPending.onclick = (e) => {
+                e.preventDefault();
+                currentSection = 'pending';
+                navItems.forEach(n => n.classList.remove('active'));
+                document.querySelectorAll('.sub-item').forEach(s => s.classList.remove('active'));
+                navPending.classList.add('active');
+                sectionTitle.textContent = 'Pending Entries Dashboard';
+
+                crudControls.classList.add('hidden');
+                reportControls.classList.add('hidden');
+                tableScroll.classList.add('hidden');
+                document.querySelector('.pagination-footer').classList.add('hidden');
+                if (document.getElementById('contact-filter-group')) {
+                    document.getElementById('contact-filter-group').classList.add('hidden');
+                }
+                
+                reportResult.classList.remove('hidden');
+                renderPendingSection();
+            };
+        }
+
+        function renderPendingSection() {
+            const buyPending = (appData['buy-entry'] || []).filter(r => r[8] === 'Pending');
+            const sellPending = (appData['giving-data'] || []).filter(r => r[9] === 'Pending');
+
+            const all = [
+                ...buyPending.map(r => ({ type: 'buy', date: r[0], company: r[1], sku: r[2], code: r[3], amt: parseFloat(r[7] || 0) })),
+                ...sellPending.map(r => ({ type: 'sell', date: r[0], company: r[1], sku: r[2], code: r[3], amt: parseFloat(r[7] || 0) }))
+            ];
+
+            if (all.length === 0) {
+                reportResult.innerHTML = '<div style="text-align:center; padding: 3rem; font-size: 1.2rem; color: var(--text-dim);"><i class="fas fa-check-circle" style="color:#22c55e; font-size: 2rem; margin-bottom: 1rem; display: block;"></i> No Pending Entries</div>';
+                return;
+            }
+
+            const groups = {};
+            all.forEach(e => {
+                const key = `${e.company}__${e.type}`;
+                if (!groups[key]) groups[key] = { company: e.company, type: e.type, entries: [], total: 0 };
+                groups[key].entries.push(e);
+                groups[key].total += e.amt;
+            });
+
+            const sortedGroups = Object.values(groups).sort((a, b) => b.total - a.total);
+            const totalPending = all.reduce((s, e) => s + e.amt, 0);
+
+            let html = `
+                <div class="pending-panel" style="max-height: none; min-height: 100%; border:none; background: transparent; padding: 0;">
+                    <div class="pending-panel-header" style="font-size: 1.5rem; margin-bottom: 2rem;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Pending Entries Dashboard
+                        <span class="pending-count-badge" style="font-size: 1rem; padding: 0.25rem 0.75rem;">${all.length} entries</span>
+                        <span class="pending-amt" style="margin-left:auto; font-size: 1.5rem;">Total: ₹${totalPending.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div class="pending-groups" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem;">
+            `;
+
+            sortedGroups.forEach((g, gi) => {
+                const entries = g.entries.map(e => `
+                    <div class="pending-entry-row">
+                        <span class="pending-entry-date">${e.date || '-'}</span>
+                        <span class="pending-entry-desc">${e.type === 'sell' ? 'Sell' : 'Buy'}#${e.sku || '-'}-${e.code || '-'}</span>
+                        <span class="pending-entry-amt">₹${e.amt.toLocaleString('en-IN')}</span>
+                    </div>
+                `).join('');
+
+                html += `
+                    <div class="pending-group-card" style="background: var(--sidebar-bg); border-color: rgba(255,255,255,0.1);">
+                        <div class="pending-group-title" onclick="this.nextElementSibling.classList.toggle('open')" style="padding: 1.25rem; background: rgba(0,0,0,0.2);">
+                            <div style="display:flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+                                <div style="display:flex; justify-content: space-between; align-items: center;">
+                                    <span class="pending-group-name" style="font-size: 1.1rem;">
+                                        <i class="fas fa-building" style="color:#94a3b8;"></i>
+                                        ${g.company || '(No Name)'}
+                                    </span>
+                                    <span class="pending-type-badge ${g.type === 'buy' ? 'badge-buy' : 'badge-sell'}">${g.type}</span>
+                                </div>
+                                <div style="display:flex; justify-content: space-between; align-items: center; color: var(--text-dim); font-size: 0.9rem;">
+                                    <span>${g.entries.length} entries</span>
+                                    <span class="pending-amt" style="font-size: 1.2rem;">₹${g.total.toLocaleString('en-IN')}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pending-entries-list open" style="padding: 1rem; max-height: 250px; overflow-y: auto;">${entries}</div>
+                    </div>
+                `;
+            });
+
+            html += `</div></div>`;
+            reportResult.innerHTML = html;
+        }
+
         const navBuyLedger = document.getElementById('nav-buy-ledger');
         const navSellLedger = document.getElementById('nav-sell-ledger');
         const contactFilterGroup = document.getElementById('contact-filter-group');
@@ -530,13 +624,11 @@ document.addEventListener('DOMContentLoaded', () => {
                                             </tr>
                                         `;
                                     }).join('')}
-                                </tbody>
-                                <tfoot>
                                     <tr class="total-row">
                                         <td colspan="3" style="text-align: right; padding-right: 2rem;">Total</td>
                                         <td><strong>₹ ${totalAmt.toLocaleString('en-IN', {minimumFractionDigits: 2})}</strong></td>
                                     </tr>
-                                </tfoot>
+                                </tbody>
                             </table>
                         </div>
                     </div>
